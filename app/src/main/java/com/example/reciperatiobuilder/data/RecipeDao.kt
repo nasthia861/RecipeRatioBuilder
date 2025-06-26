@@ -12,4 +12,8 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes")
     suspend fun getAll(): List<Recipe>
 
+    @Query("DELETE from recipes where id = :id")
+    suspend fun delete(id: Long)
+
+
 }

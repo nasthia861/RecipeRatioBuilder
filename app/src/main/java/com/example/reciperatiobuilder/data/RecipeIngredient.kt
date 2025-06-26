@@ -26,3 +26,8 @@ data class RecipeIngredient(
     val ingredientId: Long,
     val ratio: Double
 )
+data class RecipeIngredientDisplay (
+    val ingredientId: Long,
+    val name: String,
+    val ratio: Double
+)

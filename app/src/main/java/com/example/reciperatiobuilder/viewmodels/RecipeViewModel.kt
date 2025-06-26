@@ -22,9 +22,15 @@ class RecipeViewModel(application: Application): AndroidViewModel(application) {
     fun addRecipe(name: String) {
         viewModelScope.launch {
             val id = dao.insert(Recipe(name = name))
-                .toInt()
+                .toLong()
             _recipes.add(Recipe(id, name))
         }
-
     }
+    fun deleteRecipe(recipe: Recipe) {
+        viewModelScope.launch {
+            dao.delete(recipe.id)
+            _recipes.remove(recipe)
+        }
+    }
+
 }
