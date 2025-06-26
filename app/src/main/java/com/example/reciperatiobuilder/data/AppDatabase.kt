@@ -1,13 +1,23 @@
 package com.example.reciperatiobuilder.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Recipe::class], version = 1)
+@Database(
+    version = 2,
+    entities = [Recipe::class, Ingredient::class, RecipeIngredient::class],
+    exportSchema = true,
+//    autoMigrations = [
+//        AutoMigration(from = 1, to = 2)
+//    ]
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
+    abstract fun ingredientDao(): IngredientDao
+    abstract fun recipeIngredientDao(): RecipeIngredientDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -18,7 +28,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "myrecipe.db"
-                ).build()
+                )
+                .fallbackToDestructiveMigration(true)
+                .build()
                 INSTANCE = instance
                 instance
             }
