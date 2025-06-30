@@ -2,6 +2,7 @@ package com.example.reciperatiobuilder.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import java.util.UUID
 
 @Entity(
     tableName = "recipeIngredients",
@@ -30,4 +31,15 @@ data class RecipeIngredientDisplay (
     val ingredientId: Long,
     val name: String,
     val ratio: Double
+)
+data class TemporaryIngredient(
+    val tempId: String = UUID.randomUUID().toString(),
+    val name: String,
+    val ratio: Double
+)
+data class DisplayedIngredient(
+    val originalData: RecipeIngredientDisplay, // Keep original data for reference if needed
+    val ingredientName: String,
+    val displayedRatio: Double,
+    val isDynamicallyBase: Boolean // To explicitly know which one is the current dynamic base
 )
