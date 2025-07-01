@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,10 +26,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +51,7 @@ import com.example.reciperatiobuilder.ui.navigation.Navigation
 import com.example.reciperatiobuilder.viewmodels.RecipeViewModel
 import kotlin.text.isNotBlank
 
+
 @Composable
 fun RecipeScreen(
     navController: NavController,
@@ -53,8 +59,19 @@ fun RecipeScreen(
     var recipes = viewModel.recipes.collectAsState()
     var newRecipeName: State<String> = viewModel.newRecipeName.collectAsState()
     var showIngredientModal: State<Boolean> = viewModel.showIngredientAdditionModal.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarMessage by viewModel.snackBarMessage.collectAsState()
 
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short)
+            viewModel.onSnackbarMessageShown()
+        }
+    }
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = { /* ... */ },
         floatingActionButton = {
             // Your existing FAB to (for example) show the recipe name input field
@@ -145,11 +162,11 @@ fun NewRecipeIngredientsModal(
 ) {
     val ingredientsForNewRecipe by viewModel.currentIngredientsForNewRecipe.collectAsState()
     var tempIngredientName by remember { mutableStateOf("") }
-    var tempIngredientRatioStr by remember { mutableStateOf("") }
-
+    var tempIngredientWeightStr by remember { mutableStateOf("") }
+    val recipeName = viewModel.newRecipeName.collectAsState()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Ingredients for '${viewModel.newRecipeName.collectAsState().value}'") },
+        title = { Text("Add Ingredients for '${recipeName.value}'") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 // Input for current ingredient
@@ -163,9 +180,9 @@ fun NewRecipeIngredientsModal(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     OutlinedTextField(
-                        value = tempIngredientRatioStr,
-                        onValueChange = { tempIngredientRatioStr = it },
-                        label = { Text("Ratio") },
+                        value = tempIngredientWeightStr,
+                        onValueChange = { tempIngredientWeightStr = it },
+                        label = { Text("Weight") },
                         modifier = Modifier.width(100.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -173,21 +190,19 @@ fun NewRecipeIngredientsModal(
                 }
                 Button(
                     onClick = {
-                        val ratio = tempIngredientRatioStr.toDoubleOrNull()
-                        if (tempIngredientName.isNotBlank() && ratio != null && ratio > 0) {
-                            viewModel.addTemporaryIngredient(tempIngredientName, ratio)
+                        val weight = tempIngredientWeightStr.toDoubleOrNull()
+                        if (tempIngredientName.isNotBlank() && weight != null && weight > 0) {
+                            viewModel.addTemporaryIngredient(tempIngredientName, weight)
                             tempIngredientName = "" // Reset
-                            tempIngredientRatioStr = ""
-                        } else {
-                            // TODO: Show error for this ingredient input
+                            tempIngredientWeightStr = ""
                         }
                     },
                     modifier = Modifier
                         .align(Alignment.End)
                         .padding(top = 8.dp),
-                    enabled = tempIngredientName.isNotBlank() && tempIngredientRatioStr.isNotBlank()
+                    enabled = tempIngredientName.isNotBlank() && tempIngredientWeightStr.isNotBlank()
                 ) {
-                    Text("Add to List")
+                    Text("Add Ingredient to List")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -196,7 +211,7 @@ fun NewRecipeIngredientsModal(
                     Text("Ingredients to be added:", style = MaterialTheme.typography.titleMedium)
                     LazyColumn(modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 200.dp)) { // Limit height
+                        .fillMaxHeight()) { // Limit height
                         items(ingredientsForNewRecipe, key = { it.tempId }) { ingredient ->
                             Row(
                                 modifier = Modifier
@@ -205,7 +220,7 @@ fun NewRecipeIngredientsModal(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("${ingredient.name} - Ratio: ${ingredient.ratio}")
+                                Text("${ingredient.name} - Weight: ${ingredient.weightOunces} oz")
                                 IconButton(onClick = { viewModel.removeTemporaryIngredient(ingredient) }) {
                                     Icon(Icons.Filled.Close, contentDescription = "Remove ingredient")
                                 }
@@ -221,11 +236,10 @@ fun NewRecipeIngredientsModal(
             Button(
                 onClick = {
                     viewModel.saveRecipeWithIngredients()
-                    // onDismiss() // saveRecipeWithIngredients now also hides the modal
                 },
-                enabled = ingredientsForNewRecipe.isNotEmpty() // Enable save only if there are ingredients
+                enabled = ingredientsForNewRecipe.isNotEmpty()
             ) {
-                Text("Save Recipe & Ingredients")
+                Text("Save Recipe")
             }
         },
         dismissButton = {

@@ -35,11 +35,16 @@ data class RecipeIngredientDisplay (
 data class TemporaryIngredient(
     val tempId: String = UUID.randomUUID().toString(),
     val name: String,
-    val ratio: Double
+    val weightOunces: Double
 )
 data class DisplayedIngredient(
     val originalData: RecipeIngredientDisplay, // Keep original data for reference if needed
     val ingredientName: String,
     val displayedRatio: Double,
-    val isDynamicallyBase: Boolean // To explicitly know which one is the current dynamic base
+    val isDynamicallyBase: Boolean,
+    val calculatedWeight: Double?
 )
+enum class WeightUnit(val displayName: String) {
+    OZ("oz"),
+    GRAMS("grams")
+}

@@ -26,6 +26,10 @@ class RecipeViewModel(application: Application): AndroidViewModel(application) {
     val currentIngredientsForNewRecipe: StateFlow<List<TemporaryIngredient>> = _currentIngredientsForNewRecipe.asStateFlow()
     private val _showIngredientAdditionModal = MutableStateFlow(false)
     val showIngredientAdditionModal: StateFlow<Boolean> = _showIngredientAdditionModal.asStateFlow()
+    private val _snackBarMessage = MutableStateFlow<String?>(null)
+    val snackBarMessage: StateFlow<String?> = _snackBarMessage.asStateFlow()
+
+
     init {
         loadRecipes()
     }
@@ -34,28 +38,31 @@ class RecipeViewModel(application: Application): AndroidViewModel(application) {
             try {
                 _recipes.value = recipeDao.getAll() // Assuming getAll() is suspend and returns List<Recipe>
             } catch (e: Exception) {
-                Log.e("RecipeViewModel", "Error loading recipes", e)
+                _snackBarMessage.value = "Error loading recipes"
             }
         }
     }
     fun onNewRecipeNameChange(name: String) {
         _newRecipeName.value = name
     }
+    fun onSnackbarMessageShown() {
+        _snackBarMessage.value = null
+    }
 
     fun onShowIngredientModal() {
         if (_newRecipeName.value.isNotBlank()) {
             _showIngredientAdditionModal.value = true
         } else {
-            Log.e("RecipeViewModel", "Recipe name cannot be left blank")
+           _snackBarMessage.value = "Please enter a recipe name first"
         }
     }
     fun onHideIngredientModal() {
         _showIngredientAdditionModal.value = false
     }
 
-    fun addTemporaryIngredient(name: String, ratio: Double) {
-        if (name.isNotBlank() && ratio > 0) {
-            val newIngredient = TemporaryIngredient(name = name, ratio = ratio)
+    fun addTemporaryIngredient(name: String, weight: Double) {
+        if (name.isNotBlank() && weight > 0) {
+            val newIngredient = TemporaryIngredient(name = name, weightOunces = weight)
             _currentIngredientsForNewRecipe.value += newIngredient
         }
     }
@@ -67,28 +74,30 @@ class RecipeViewModel(application: Application): AndroidViewModel(application) {
         viewModelScope.launch {
             val recipeName = _newRecipeName.value
             val ingredients = _currentIngredientsForNewRecipe.value
+            val baseWeight = ingredients.first().weightOunces
 
             if (recipeName.isNotBlank()) {
-                // This should ideally be a single transaction
                 try {
-                    val newRecipeId = recipeDao.insert(Recipe(name = recipeName)) // Assuming insertRecipe returns the new ID
+                    val newRecipeId = recipeDao.insert(Recipe(name = recipeName))
                     ingredients.forEach { tempIngredient ->
+                        val calculateRatio = tempIngredient.weightOunces / baseWeight
                         recipeIngredientDao.insert(
                             recipeId = newRecipeId,
                             name = tempIngredient.name,
-                            ratio = tempIngredient.ratio
+                            ratio = calculateRatio
                         )
                     }
                     // Reset fields after successful save
                     _newRecipeName.value = ""
                     _currentIngredientsForNewRecipe.value = emptyList()
                     _showIngredientAdditionModal.value = false
-                    loadRecipes() // Refresh the recipe list
+                    loadRecipes()
+                    _snackBarMessage.value = "Recipe saved"
                 } catch (e: Exception) {
-                    Log.e("RecipeViewModel", "Error saving recipe with ingredients", e)
+                    _snackBarMessage.value = "Error saving recipe"
                 }
             } else {
-                Log.e("RecipeViewModel", "Recipe name cannot be left blank")
+                _snackBarMessage.value = "Please enter a recipe name first"
             }
         }
     }
@@ -97,6 +106,7 @@ class RecipeViewModel(application: Application): AndroidViewModel(application) {
         viewModelScope.launch {
             recipeDao.delete(recipe.id)
             _recipes.value = _recipes.value.filter { it.id != recipe.id }
+            _snackBarMessage.value = "Recipe deleted"
         }
     }
 
